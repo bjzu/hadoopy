@@ -1,0 +1,1189 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Hadoopy: Python wrapper for Hadoop using Cython &mdash; Hadoopy v.0.4.0 documentation</title>
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     '.0.4.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="Hadoopy v.0.4.0 documentation" href="#" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li><a href="#">Hadoopy v.0.4.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="hadoopy-python-wrapper-for-hadoop-using-cython">
+<h1>Hadoopy: Python wrapper for Hadoop using Cython<a class="headerlink" href="#hadoopy-python-wrapper-for-hadoop-using-cython" title="Permalink to this headline">¶</a></h1>
+<div class="toctree-wrapper compound">
+<ul class="simple">
+</ul>
+</div>
+<p>Visit <a class="reference external" href="https://github.com/bwhite/hadoopy/">https://github.com/bwhite/hadoopy/</a> for the source.</p>
+<p>Relevant blog posts</p>
+<ul class="simple">
+<li><a class="reference external" href="http://brandynwhite.com/hadoopy-cython-based-mapreduce-library-for-py">http://brandynwhite.com/hadoopy-cython-based-mapreduce-library-for-py</a></li>
+</ul>
+<div class="section" id="about">
+<h2>About<a class="headerlink" href="#about" title="Permalink to this headline">¶</a></h2>
+<p>Hadoopy is a Python wrapper for Hadoop Streaming written in Cython.  It is simple, fast, and readily hackable.  It has been tested on 700+ node clusters.  The goals of Hadoopy are</p>
+<ul class="simple">
+<li>Similar interface as the Hadoop API (design patterns usable between Python/Java interfaces)</li>
+<li>General compatibility with dumbo to allow users to switch back and forth</li>
+<li>Usable on Hadoop clusters without Python or admin access</li>
+<li>Fast conversion and processing</li>
+<li>Stay small and well documented</li>
+<li>Be transparent with what is going on</li>
+<li>Handle programs with complicated .so&#8217;s, ctypes, and extensions</li>
+<li>Code written for hack-ability</li>
+<li>Simple HDFS access (e.g., reading, writing, ls)</li>
+<li>Support (and not replicate) the greater Hadoop ecosystem (e.g., Oozie, whirr)</li>
+</ul>
+<p>Killer Features (unique to Hadoopy)</p>
+<ul class="simple">
+<li>Automated job parallelization &#8216;auto-oozie&#8217; available in the hadoopy <a class="reference external" href="https://github.com/bwhite/hadoopy_flow">flow</a> project (maintained out of branch)</li>
+<li>Local execution of unmodified MapReduce job with launch_local</li>
+<li>Read/write sequence files of TypedBytes directly to HDFS from python (readtb, writetb)</li>
+<li>Allows printing to stdout and stderr in Hadoop tasks without causing problems (uses the &#8216;pipe hopping&#8217; technique, both are available in the task&#8217;s stderr)</li>
+<li>Works on clusters without any extra installation, Python, or any Python libraries (uses Pyinstaller that is included in this source tree)</li>
+</ul>
+<p>Additional Features</p>
+<ul class="simple">
+<li>Works on OS X</li>
+<li>Critical path is in Cython</li>
+<li>Simple HDFS access (readtb and ls) inside Python, even inside running jobs</li>
+<li>Unit test interface</li>
+<li>Reporting using status and counters (and print statements! no need to be scared of them in Hadoopy)</li>
+<li>Supports design patterns in the Lin&amp;Dyer <a class="reference external" href="http://www.umiacs.umd.edu/~jimmylin/book.html">book</a></li>
+<li>Typedbytes support (very fast)</li>
+<li>Oozie support</li>
+</ul>
+</div>
+<div class="section" id="benchmark">
+<h2>Benchmark<a class="headerlink" href="#benchmark" title="Permalink to this headline">¶</a></h2>
+<p>The majority of the time spent by Hadoopy (and Dumbo) is in the TypedBytes conversion code.  This is a simple binary serialization format that covers standard types with the ability to use Pickle for types not natively supported.  We generate a large set of test vectors (using the <a class="reference external" href="https://github.com/bwhite/hadoopy/blob/master/play/tb_make_test.py">tb_make_test.py</a> script), that have primatives, containers, and a uniform mix (GrabBag).  The idea is that by factoring out the types, we can easily see where optimization is needed.  Each element is read from stdin, then written to stdout.  Outside of the timing all of the values are compared to ensure that the final written values are the same.  Four methods are compared:  Hadoopy TypedBytes (<a class="reference external" href="https://github.com/bwhite/hadoopy/blob/master/play/speed_hadoopy.py">speed_hadoopy.py</a>), Hadoopy TypedBytes file interface (<a class="reference external" href="https://github.com/bwhite/hadoopy/blob/master/play/speed_hadoopyfp.py">speed_hadoopyfp.py</a>), <a class="reference external" href="https://github.com/klbostee/typedbytes">TypedBytes</a> (<a class="reference external" href="https://github.com/bwhite/hadoopy/blob/master/play/speed_tb.py">speed_tb.py</a>), and <a class="reference external" href="https://github.com/klbostee/ctypedbytes">cTypedBytes</a> (<a class="reference external" href="https://github.com/bwhite/hadoopy/blob/master/play/speed_tbc.py">speed_tbc.py</a>).  All columns are in seconds except for ratio.  The ratio is min(TB, cTB) / HadoopyFP (e.g., 7 means HadoopyFP is 7 times faster).</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="27%" />
+<col width="15%" />
+<col width="15%" />
+<col width="15%" />
+<col width="15%" />
+<col width="15%" />
+</colgroup>
+<thead valign="bottom">
+<tr><th class="head">Filename</th>
+<th class="head">Hadoopy</th>
+<th class="head">HadoopyFP</th>
+<th class="head">TB</th>
+<th class="head">cTB</th>
+<th class="head">Ratio</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr><td>double_100k.tb</td>
+<td>0.148790</td>
+<td>0.119961</td>
+<td>0.904720</td>
+<td>0.993845</td>
+<td>7.541784</td>
+</tr>
+<tr><td>float_100k.tb</td>
+<td>0.145637</td>
+<td>0.118920</td>
+<td>0.883124</td>
+<td>0.992447</td>
+<td>7.426198</td>
+</tr>
+<tr><td>gb_100k.tb</td>
+<td>4.638573</td>
+<td>4.011934</td>
+<td>25.577765</td>
+<td>16.515563</td>
+<td>4.116609</td>
+</tr>
+<tr><td>bool_100k.tb</td>
+<td>0.171327</td>
+<td>0.150975</td>
+<td>0.942188</td>
+<td>0.542741</td>
+<td>3.594907</td>
+</tr>
+<tr><td>dict_50.tb</td>
+<td>0.394323</td>
+<td>0.364878</td>
+<td>1.649921</td>
+<td>1.225979</td>
+<td>3.359970</td>
+</tr>
+<tr><td>tuple_50.tb</td>
+<td>0.370037</td>
+<td>0.413579</td>
+<td>1.546317</td>
+<td>1.241491</td>
+<td>3.001823</td>
+</tr>
+<tr><td>byte_100k.tb</td>
+<td>0.183307</td>
+<td>0.164549</td>
+<td>0.894184</td>
+<td>0.487520</td>
+<td>2.962767</td>
+</tr>
+<tr><td>list_50.tb</td>
+<td>0.355870</td>
+<td>0.370738</td>
+<td>1.529233</td>
+<td>1.092422</td>
+<td>2.946614</td>
+</tr>
+<tr><td>int_100k.tb</td>
+<td>0.234842</td>
+<td>0.193235</td>
+<td>0.922423</td>
+<td>0.526160</td>
+<td>2.722903</td>
+</tr>
+<tr><td>long_100k.tb</td>
+<td>0.761289</td>
+<td>0.640638</td>
+<td>1.727951</td>
+<td>1.957162</td>
+<td>2.697234</td>
+</tr>
+<tr><td>bytes_100_10k.tb</td>
+<td>0.069889</td>
+<td>0.069375</td>
+<td>0.147470</td>
+<td>0.096838</td>
+<td>1.395862</td>
+</tr>
+<tr><td>string_100_10k.tb</td>
+<td>0.106642</td>
+<td>0.104784</td>
+<td>0.157907</td>
+<td>0.106571</td>
+<td>1.017054</td>
+</tr>
+<tr><td>string_10k_10k.tb</td>
+<td>6.392013</td>
+<td>6.527343</td>
+<td>6.494607</td>
+<td>6.949912</td>
+<td>0.994985</td>
+</tr>
+<tr><td>bytes_10k_10k.tb</td>
+<td>3.073718</td>
+<td>3.123196</td>
+<td>3.039668</td>
+<td>3.100858</td>
+<td>0.973256</td>
+</tr>
+<tr><td>string_1k_10k.tb</td>
+<td>0.742198</td>
+<td>0.719119</td>
+<td>0.686382</td>
+<td>0.676537</td>
+<td>0.940786</td>
+</tr>
+<tr><td>bytes_1k_10k.tb</td>
+<td>0.379785</td>
+<td>0.370314</td>
+<td>0.329728</td>
+<td>0.339387</td>
+<td>0.890401</td>
+</tr>
+<tr><td>gb_single.tb</td>
+<td>0.045760</td>
+<td>0.042701</td>
+<td>0.038656</td>
+<td>0.034925</td>
+<td>0.817896</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="example-hello-wordcount">
+<h2>Example - Hello Wordcount!<a class="headerlink" href="#example-hello-wordcount" title="Permalink to this headline">¶</a></h2>
+<p>Python Source (fully documented version in <a class="reference external" href="https://github.com/bwhite/hadoopy/blob/master/tests/wc.py">wc.py</a>)</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="sd">&quot;&quot;&quot;Hadoopy Wordcount Demo&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">hadoopy</span>
+
+<span class="k">def</span> <span class="nf">mapper</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">word</span> <span class="ow">in</span> <span class="n">value</span><span class="o">.</span><span class="n">split</span><span class="p">():</span>
+        <span class="k">yield</span> <span class="n">word</span><span class="p">,</span> <span class="mi">1</span>
+
+<span class="k">def</span> <span class="nf">reducer</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">values</span><span class="p">):</span>
+    <span class="n">accum</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">count</span> <span class="ow">in</span> <span class="n">values</span><span class="p">:</span>
+        <span class="n">accum</span> <span class="o">+=</span> <span class="nb">int</span><span class="p">(</span><span class="n">count</span><span class="p">)</span>
+    <span class="k">yield</span> <span class="n">key</span><span class="p">,</span> <span class="n">accum</span>
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">hadoopy</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">mapper</span><span class="p">,</span> <span class="n">reducer</span><span class="p">,</span> <span class="n">doc</span><span class="o">=</span><span class="n">__doc__</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Command line test (run without args, it prints the docstring and quits because of doc=__doc__)</p>
+<div class="highlight-python"><pre>$ python wc.py
+Hadoopy Wordcount Demo</pre>
+</div>
+<p>Command line test (map)</p>
+<div class="highlight-python"><pre>$ echo "a b a a b c" | python wc.py map
+a    1
+b    1
+a    1
+a    1
+b    1
+c    1</pre>
+</div>
+<p>Command line test (map/sort)</p>
+<div class="highlight-python"><pre>$ echo "a b a a b c" | python wc.py map | sort
+a    1
+a    1
+a    1
+b    1
+b    1
+c    1</pre>
+</div>
+<p>Command line test (map/sort/reduce)</p>
+<div class="highlight-python"><pre>$ echo "a b a a b c" | python wc.py map | sort | python wc.py reduce
+a    3
+b    2
+c    1</pre>
+</div>
+<p>Here are a few test files</p>
+<div class="highlight-python"><pre>$ hadoop fs -ls playground/
+Found 3 items
+-rw-r--r--   2 brandyn supergroup     259835 2011-01-17 18:56 /user/brandyn/playground/wc-input-alice.tb
+-rw-r--r--   2 brandyn supergroup     167529 2011-01-17 18:56 /user/brandyn/playground/wc-input-alice.txt
+-rw-r--r--   2 brandyn supergroup      60638 2011-01-17 18:56 /user/brandyn/playground/wc-input-alice.txt.gz</pre>
+</div>
+<p>We can also do this in Python</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">hadoopy</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">hadoopy</span><span class="o">.</span><span class="n">ls</span><span class="p">(</span><span class="s">&#39;playground/&#39;</span><span class="p">)</span>
+<span class="go">[&#39;/user/brandyn/playground/wc-input-alice.tb&#39;, &#39;/user/brandyn/playground/wc-input-alice.txt&#39;, &#39;/user/brandyn/playground/wc-input-alice.txt.gz&#39;]</span>
+</pre></div>
+</div>
+<p>Lets put wc-input-alice.txt through the word counter using Hadoop.  Each node in the cluster has Hadoopy installed (later we will show that it isn&#8217;t necessary with launch_frozen).  Note that it is using typedbytes, SequenceFiles, and the AutoInputFormat by default.</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">out</span> <span class="o">=</span> <span class="n">hadoopy</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="s">&#39;playground/wc-input-alice.txt&#39;</span><span class="p">,</span> <span class="s">&#39;playground/out/&#39;</span><span class="p">,</span> <span class="s">&#39;wc.py&#39;</span><span class="p">)</span>
+<span class="go">/\----------Hadoop Output----------/\</span>
+<span class="go">hadoopy: Running[hadoop jar /usr/lib/hadoop-0.20/contrib/streaming/hadoop-streaming-0.20.2+737.jar -output playground/out/ -input playground/wc-input-alice.txt -mapper &quot;python wc.py map&quot; -reducer &quot;python wc.py reduce&quot; -file wc.py -jobconf mapred.job.name=python wc.py -io typedbytes -outputformat org.apache.hadoop.mapred.SequenceFileOutputFormat -    inputformat AutoInputFormat]</span>
+<span class="go">11/01/17 20:22:31 WARN streaming.StreamJob: -jobconf option is deprecated, please use -D instead.</span>
+<span class="go">packageJobJar: [wc.py, /var/lib/hadoop-0.20/cache/brandyn/hadoop-unjar464849802654976085/] [] /tmp/streamjob1822202887260165136.jar tmpDir=null</span>
+<span class="go">11/01/17 20:22:32 INFO mapred.FileInputFormat: Total input paths to process : 1</span>
+<span class="go">11/01/17 20:22:32 INFO streaming.StreamJob: getLocalDirs(): [/var/lib/hadoop-0.20/cache/brandyn/mapred/local]</span>
+<span class="go">11/01/17 20:22:32 INFO streaming.StreamJob: Running job: job_201101141644_0723</span>
+<span class="go">11/01/17 20:22:32 INFO streaming.StreamJob: To kill this job, run:</span>
+<span class="go">11/01/17 20:22:32 INFO streaming.StreamJob: /usr/lib/hadoop-0.20/bin/hadoop job  -Dmapred.job.tracker=node.com:8021 -kill job_201101141644_0723</span>
+<span class="go">11/01/17 20:22:32 INFO streaming.StreamJob: Tracking URL: http://node.com:50030/jobdetails.jsp?jobid=job_201101141644_0723</span>
+<span class="go">11/01/17 20:22:33 INFO streaming.StreamJob:  map 0%  reduce 0%</span>
+<span class="go">11/01/17 20:22:40 INFO streaming.StreamJob:  map 50%  reduce 0%</span>
+<span class="go">11/01/17 20:22:41 INFO streaming.StreamJob:  map 100%  reduce 0%</span>
+<span class="go">11/01/17 20:22:52 INFO streaming.StreamJob:  map 100%  reduce 100%</span>
+<span class="go">11/01/17 20:22:55 INFO streaming.StreamJob: Job complete: job_201101141644_0723</span>
+<span class="go">11/01/17 20:22:55 INFO streaming.StreamJob: Output: playground/out/</span>
+<span class="go">\/----------Hadoop Output----------\/</span>
+</pre></div>
+</div>
+<p>Return value is a dictionary of the command&#8217;s run, key/value iterator of the output (lazy evaluated), and other useful intermediate values.</p>
+<p>Lets see what the output looks like.</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">out</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">hadoopy</span><span class="o">.</span><span class="n">readtb</span><span class="p">(</span><span class="s">&#39;playground/out&#39;</span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">out</span><span class="p">[:</span><span class="mi">10</span><span class="p">]</span>
+<span class="go">[(&#39;*&#39;, 60), (&#39;-&#39;, 7), (&#39;3&#39;, 2), (&#39;4&#39;, 1), (&#39;A&#39;, 8), (&#39;I&#39;, 260), (&#39;O&#39;, 1), (&#39;a&#39;, 662), (&#39;&quot;I&#39;, 7), (&quot;&#39;A&quot;, 9)]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">out</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nb">cmp</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">y</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">out</span><span class="p">[</span><span class="o">-</span><span class="mi">10</span><span class="p">:]</span>
+<span class="go">[(&#39;was&#39;, 329), (&#39;it&#39;, 356), (&#39;in&#39;, 401), (&#39;said&#39;, 416), (&#39;she&#39;, 484), (&#39;of&#39;, 596), (&#39;a&#39;, 662), (&#39;to&#39;, 773), (&#39;and&#39;, 780), (&#39;the&#39;, 1664)]</span>
+</pre></div>
+</div>
+<p>Note that the output is stored in SequenceFiles and each key/value is stored encoded as TypedBytes, by using readtb you don&#8217;t have to worry about any of that (if the output was compressed it would also be decompressed here).  This can also be done inside of a job for getting additional side-data off of HDFS.</p>
+<p>What if we don&#8217;t want to install python, numpy, scipy, or your-custom-code-that-always-changes on every node in the cluster?  We have you covered there too.  I&#8217;ll remove hadoopy from all nodes except for the one executing the job.</p>
+<div class="highlight-python"><pre>$ sudo rm -r /usr/local/lib/python2.7/dist-packages/hadoopy*</pre>
+</div>
+<p>Now it&#8217;s gone</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">hadoopy</span>
+<span class="gt">Traceback (most recent call last):</span>
+  File <span class="nb">&quot;&lt;stdin&gt;&quot;</span>, line <span class="m">1</span>, in <span class="n">&lt;module&gt;</span>
+<span class="gr">ImportError</span>: <span class="n">No module named hadoopy</span>
+</pre></div>
+</div>
+<p>The rest of the nodes were cleaned up the same way.  We modify the command, note that we now get the output from freeze at the top</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">out</span> <span class="o">=</span> <span class="n">hadoopy</span><span class="o">.</span><span class="n">launch_frozen</span><span class="p">(</span><span class="s">&#39;playground/wc-input-alice.txt&#39;</span><span class="p">,</span> <span class="s">&#39;playground/out_frozen/&#39;</span><span class="p">,</span> <span class="s">&#39;wc.py&#39;</span><span class="p">)</span>
+<span class="go">/\----------Hadoop Output----------/\</span>
+<span class="go">hadoopy: Running[hadoop jar /hadoop-0.20.2+320/contrib/streaming/hadoop-streaming-0.20.2+320.jar -output playground/out_frozen/ -input playground/wc-input-alice.txt -mapper &quot;_frozen/wc pipe map&quot; -reducer &quot;_frozen/wc pipe reduce&quot; -jobconf &quot;mapred.cache.archives=_hadoopy_temp/1310088192.511625/_frozen.tar#_frozen&quot; -jobconf &quot;mapreduce.job.cache.archives=_hadoopy_temp/1310088192.511625/_frozen.tar#_frozen&quot; -jobconf mapred.job.name=wc -io typedbytes -outputformat org.apache.hadoop.mapred.SequenceFileOutputFormat -inputformat AutoInputFormat]</span>
+<span class="go">11/07/07 21:23:23 WARN streaming.StreamJob: -jobconf option is deprecated, please use -D instead.</span>
+<span class="go">packageJobJar: [/tmp/hadoop/brandyn/hadoop-unjar12844/] [] /tmp/streamjob12845.jar tmpDir=null</span>
+<span class="go">11/07/07 21:23:24 INFO mapred.FileInputFormat: Total input paths to process : 1</span>
+<span class="go">11/07/07 21:23:24 INFO streaming.StreamJob: getLocalDirs(): [/scratch0/hadoop/mapred/local, /scratch1/hadoop/mapred/local, /scratch2/hadoop/mapred/local]</span>
+<span class="go">11/07/07 21:23:24 INFO streaming.StreamJob: Running job: job_201107051032_0215</span>
+<span class="go">11/07/07 21:23:24 INFO streaming.StreamJob: To kill this job, run:</span>
+<span class="go">11/07/07 21:23:24 INFO streaming.StreamJob: /hadoop-0.20.2+320/bin/hadoop job  -Dmapred.job.tracker=node.com:8021 -kill job_201107051032_0215</span>
+<span class="go">11/07/07 21:23:24 INFO streaming.StreamJob: Tracking URL: http://node.com:50030/jobdetails.jsp?jobid=job_201107051032_0215</span>
+<span class="go">11/07/07 21:23:25 INFO streaming.StreamJob:  map 0%  reduce 0%</span>
+<span class="go">11/07/07 21:23:31 INFO streaming.StreamJob:  map 100%  reduce 0%</span>
+<span class="go">11/07/07 21:23:46 INFO streaming.StreamJob:  map 100%  reduce 100%</span>
+<span class="go">11/07/07 21:23:49 INFO streaming.StreamJob: Job complete: job_201107051032_0215</span>
+<span class="go">11/07/07 21:23:49 INFO streaming.StreamJob: Output: playground/out_frozen/</span>
+<span class="go">\/----------Hadoop Output----------\/</span>
+</pre></div>
+</div>
+<p>And lets check the output</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">out</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">hadoopy</span><span class="o">.</span><span class="n">readtb</span><span class="p">(</span><span class="s">&#39;playground/out_frozen&#39;</span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">out</span><span class="p">[:</span><span class="mi">10</span><span class="p">]</span>
+<span class="go">[(&#39;*&#39;, 60), (&#39;-&#39;, 7), (&#39;3&#39;, 2), (&#39;4&#39;, 1), (&#39;A&#39;, 8), (&#39;I&#39;, 260), (&#39;O&#39;, 1), (&#39;a&#39;, 662), (&#39;&quot;I&#39;, 7), (&quot;&#39;A&quot;, 9)]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">out</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nb">cmp</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">y</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">out</span><span class="p">[</span><span class="o">-</span><span class="mi">10</span><span class="p">:]</span>
+<span class="go">[(&#39;was&#39;, 329), (&#39;it&#39;, 356), (&#39;in&#39;, 401), (&#39;said&#39;, 416), (&#39;she&#39;, 484), (&#39;of&#39;, 596), (&#39;a&#39;, 662), (&#39;to&#39;, 773), (&#39;and&#39;, 780), (&#39;the&#39;, 1664)]</span>
+</pre></div>
+</div>
+<p>We can also generate a tar of the frozen script (useful when working with Oozie).  Note the &#8216;wc&#8217; is not wc.py, it is actually a self contained executable.</p>
+<div class="highlight-python"><pre>$ python wc.py freeze wc.tar
+$ tar -tf wc.tar
+_codecs_cn.so
+readline.so
+strop.so
+cPickle.so
+time.so
+_collections.so
+operator.so
+zlib.so
+_codecs_jp.so
+grp.so
+_codecs_kr.so
+_codecs_hk.so
+_functools.so
+_json.so
+math.so
+libbz2.so.1.0
+libutil.so.1
+unicodedata.so
+array.so
+_bisect.so
+libz.so.1
+_typedbytes.so
+_random.so
+_main.so
+cStringIO.so
+_codecs_tw.so
+libncurses.so.5
+datetime.so
+_struct.so
+_weakref.so
+fcntl.so
+_heapq.so
+wc
+_io.so
+select.so
+_codecs_iso2022.so
+_locale.so
+itertools.so
+binascii.so
+bz2.so
+libpython2.7.so.1.0
+_multibytecodec.so</pre>
+</div>
+<p>Lets open it up and try it out</p>
+<div class="highlight-python"><pre>$ tar -xf wc.py
+$ ./wc
+Hadoopy Wordcount Demo
+$ python wc.py
+Hadoopy Wordcount Demo
+$ hexdump -C wc | head -n5
+00000000  7f 45 4c 46 02 01 01 00  00 00 00 00 00 00 00 00  |.ELF............|
+00000010  02 00 3e 00 01 00 00 00  80 41 40 00 00 00 00 00  |..&gt;......A@.....|
+00000020  40 00 00 00 00 00 00 00  50 04 16 00 00 00 00 00  |@.......P.......|
+00000030  00 00 00 00 40 00 38 00  09 00 40 00 1d 00 1c 00  |....@.8...@.....|
+00000040  06 00 00 00 05 00 00 00  40 00 00 00 00 00 00 00  |........@.......|</pre>
+</div>
+<p>You can determine if a job provides map/reduce/combine functionality and get its documention by using &#8216;info&#8217;.  This is also used internally by Hadoopy to autoatically enable/disable the reducer/combiner.  The task values are set when the corresponding slots in hadoopy.run are filled.</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">python</span> <span class="n">wc</span><span class="o">.</span><span class="n">py</span> <span class="n">info</span>
+<span class="go">{&quot;doc&quot;: &quot;Hadoopy Wordcount Demo&quot;, &quot;tasks&quot;: [&quot;map&quot;, &quot;reduce&quot;]}</span>
+</pre></div>
+</div>
+<p>That&#8217;s a quick tour of Hadoopy.</p>
+</div>
+<div class="section" id="pipe-hopping-using-stdout-stderr-in-hadoopy-jobs">
+<h2>Pipe Hopping: Using Stdout/Stderr in Hadoopy Jobs<a class="headerlink" href="#pipe-hopping-using-stdout-stderr-in-hadoopy-jobs" title="Permalink to this headline">¶</a></h2>
+<p>Hadoop streaming implements the standard Mapper/Reducer classes and simply opens 3 pipes to a streaming program (stdout, stderr, and stdin).  The first issue is how is data encoded?  The standard is to separate keys and values with a tab and each key/value pair with a newline; however, this is really a bad way to have to work as you have to ensure that your output never contains tabs or newlines.  Moreover, serializing everything to an escaped string is inefficient and tends to hurt interoperability of jobs as everyone has their own solution to encoding.  The solution (part of CDH2+) is to use TypedBytes which is an encoding format for basic types (int, float, dictionary, list, string, etc.) which is fast, standardized, and simple.  Hadoopy has its own implementation and it is particularly fast.</p>
+<p>TypedBytes doesn&#8217;t solve the issue of client code outputting to stdout, it actually makes it worse as the resulting output is interpreted as TypedBytes which can have very complex effects.  Most Hadoop streaming programs have to meticulously avoid printing to stdout as it will interfere with the connection to Hadoop streaming.  Hadoopy uses a technique I refer to as &#8216;pipe hopping&#8217; where a launcher remaps the stdin/stdout of the client program to be null and stderr respectively, and communication happens over file descriptors which correspond to the true stdout/stdin that Hadoop streaming communicates with.  This is transparent to the user but the end result is more useful error messages when exceptions are thrown (as opposed to generic Java errors) and the ability to use print statements like normal.  This is a general solution to the problem and if other library writers (for python or other languages) would like a minimum working example of this technique I have one available.</p>
+<p>This technique is on by default and can be disabled by passing pipe=False to the launch command of your choice.</p>
+</div>
+<div class="section" id="hadoopy-flow-automatic-job-level-parallization">
+<h2>Hadoopy Flow: Automatic Job-Level Parallization<a class="headerlink" href="#hadoopy-flow-automatic-job-level-parallization" title="Permalink to this headline">¶</a></h2>
+<p>Once you get past the wordcount examples and you have a few scripts you use regularly, the next level of complexity is managing a workflow of jobs.  The simplest way of doing this is to put a few sequential launch statements in a python script and run it.  This is fine for simple workflows but you miss out on two abilities: re-execution of previous workflows by re-using outputs (e.g., when tweaking one job in a flow) and parallel execution of jobs in a flow.  I&#8217;ve had some fairly complex flows and previously the best solution I could find was using <a class="reference external" href="http://yahoo.github.com/oozie/releases/3.0.0/">Oozie</a> with a several thousand line XML file.  Once setup, this ran jobs in parallel and re-execute the workflow by skipping previous nodes; however, it is another server you have to setup and making that XML file takes a lot of the fun out of using Python in the first place (it could be more code than your actual task).  While Hadoopy is fully compatible with Oozie, it certainly seems lacking for the kind of short turn-around scripts most users want to make.</p>
+<p>In solving this problem, our goal was to avoid specifying the dependencies (often as a DAG) as they are inherent in the code itself.  Hadoopy Flow solves both of these problems by keeping track of all HDFS outputs your program intends to create and following your program order.  By doing this, if we see a &#8216;launch&#8217; command we run it in a &#8216;greenlet&#8217;, note the output path of the job, and continue with the rest of the program.  If none of the job&#8217;s inputs depend on any outputs that are pending (i.e., outputs that will materialize from previous jobs/hdfs commands) then we can safely start the job.  This is entirely safe because if the program worked before Hadoopy Flow, then it will work now as those inputs must exist as nothing prior to the job could have created it.  When a job completes, we notify dependent jobs/hdfs commands and if all of their inputs are available they are executed.  The same goes for HDFS commands such as readtb and writetb (most but not all HDFS commands are supported, see Hadoopy Flow for more info).  If you try to read from a file that another job will eventually output to but it hasn&#8217;t finished yet, then the execution will block at that point until the necessary data is available.</p>
+<p>So it sounds pretty magical, but it wouldn&#8217;t be worth it if you have to rewrite all of your code.  To use Hadoopy Flow, all that you have to do is add &#8216;import hadoopy_flow&#8217; before you import Hadoopy, and it will automatically parallelize your code.  It monkey patches Hadoopy (i.e., wraps the calls at run time) and the rest of your code can be unmodified.  All of the code is just a few hundred lines in one file, if you are familiar with greenlets then it might take you 10 minutes to fully understand it (which I recommend if you are going to use it regularly).</p>
+<p>Re-execution is another important feature that Hadoopy Flow addresses and it does so trivially.  If after importing Hadoopy Flow you use &#8216;hadoopy_flow.USE_EXISTING = True&#8217;, then when paths already exist we simply skip the task/command that would have output to them.  This is useful if you run a workflow, a job crashes, fix the bug, delete the bad job&#8217;s output, and re-run the workflow.  All previous jobs will be skipped and jobs that don&#8217;t have their outputs on HDFS are executed like normal.  This simple addition makes iterative development using Hadoop a lot more fun and effective as tweaks generally happen at the end of the workflow and you can easily waste hours recomputing results or hacking your workflow apart to short circuit it.</p>
+</div>
+<div class="section" id="job-driver-api-start-hadoop-jobs">
+<h2>Job Driver API (Start Hadoop Jobs)<a class="headerlink" href="#job-driver-api-start-hadoop-jobs" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="hadoopy.launch">
+<tt class="descclassname">hadoopy.</tt><tt class="descname">launch</tt><big>(</big><em>in_name</em>, <em>out_name</em>, <em>script_path</em><span class="optional">[</span>, <em>partitioner=False</em>, <em>files=()</em>, <em>jobconfs=()</em>, <em>cmdenvs=()</em>, <em>copy_script=True</em>, <em>wait=True</em>, <em>hstreaming=None</em>, <em>name=None</em>, <em>use_typedbytes=True</em>, <em>use_seqoutput=True</em>, <em>use_autoinput=True</em>, <em>add_python=True</em>, <em>config=None</em>, <em>pipe=True</em>, <em>python_cmd=&quot;python&quot;</em>, <em>num_mappers=None</em>, <em>num_reducers=None</em>, <em>script_dir=''</em>, <em>remove_ext=False</em>, <em>**kw</em><span class="optional">]</span><big>)</big><a class="headerlink" href="#hadoopy.launch" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run Hadoop given the parameters</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>in_name</strong> &#8211; Input path (string or list)</li>
+<li><strong>out_name</strong> &#8211; Output path</li>
+<li><strong>script_path</strong> &#8211; Path to the script (e.g., script.py)</li>
+<li><strong>partitioner</strong> &#8211; If True, the partitioner is the value.</li>
+<li><strong>files</strong> &#8211; Extra files (other than the script) (string or list).  NOTE: Hadoop copies the files into working directory</li>
+<li><strong>jobconfs</strong> &#8211; Extra jobconf parameters (string or list)</li>
+<li><strong>cmdenvs</strong> &#8211; Extra cmdenv parameters (string or list)</li>
+<li><strong>copy_script</strong> &#8211; If True, the script is added to the files list.</li>
+<li><strong>wait</strong> &#8211; If True, wait till the process is completed (default True) this is useful if you want to run multiple jobs concurrently by using the &#8216;process&#8217; entry in the output.</li>
+<li><strong>hstreaming</strong> &#8211; The full hadoop streaming path to call.</li>
+<li><strong>name</strong> &#8211; Set the job name to this (default None, job name is the script name)</li>
+<li><strong>use_typedbytes</strong> &#8211; If True (default), use typedbytes IO.</li>
+<li><strong>use_seqoutput</strong> &#8211; True (default), output sequence file. If False, output is text.</li>
+<li><strong>use_autoinput</strong> &#8211; If True (default), sets the input format to auto.</li>
+<li><strong>add_python</strong> &#8211; If true, use &#8216;python script_name.py&#8217;</li>
+<li><strong>config</strong> &#8211; If a string, set the hadoop config path</li>
+<li><strong>pipe</strong> &#8211; If true (default) then call user code through a pipe to isolate it and stop bugs when printing to stdout.  See project docs.</li>
+<li><strong>python_cmd</strong> &#8211; The python command to use. The default is &#8220;python&#8221;. Can be used to override the system default python, e.g. python_cmd = &#8220;python2.6&#8221;</li>
+<li><strong>num_mappers</strong> &#8211; The number of mappers to use, i.e. the argument given to &#8216;numMapTasks&#8217;. If None, then do not specify this argument to hadoop streaming.</li>
+<li><strong>num_reducers</strong> &#8211; The number of reducers to use, i.e. the argument given to &#8216;numReduceTasks&#8217;. If None, then do not specify this argument to hadoop streaming.</li>
+<li><strong>script_dir</strong> &#8211; Where the script is relative to working dir, will be prefixed to script_path with a / (default &#8216;&#8217; is current dir)</li>
+<li><strong>remove_ext</strong> &#8211; If True, remove the script extension (default False)</li>
+</ul>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Return type:</th><td class="field-body"><p class="first">Dictionary with some of the following entries (depending on options)</p>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">freeze_cmds: Freeze command(s) ran</p>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">frozen_tar_path: HDFS path to frozen file</p>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">hadoop_cmds: Hadoopy command(s) ran</p>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">process: subprocess.Popen object</p>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">output: Iterator of (key, value) pairs</p>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Raises :</th><td class="field-body"><p class="first">subprocess.CalledProcessError: Hadoop error.</p>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Raises :</th><td class="field-body"><p class="first last">OSError: Hadoop streaming not found.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="hadoopy.launch_frozen">
+<tt class="descclassname">hadoopy.</tt><tt class="descname">launch_frozen</tt><big>(</big><em>in_name</em>, <em>out_name</em>, <em>script_path</em><span class="optional">[</span>, <em>frozen_tar_path=None</em>, <em>temp_path='_hadoopy_temp'</em>, <em>partitioner=False</em>, <em>wait=True</em>, <em>files=()</em>, <em>jobconfs=()</em>, <em>cmdenvs=()</em>, <em>hstreaming=None</em>, <em>name=None</em>, <em>use_typedbytes=True</em>, <em>use_seqoutput=True</em>, <em>use_autoinput=True</em>, <em>add_python=True</em>, <em>config=None</em>, <em>pipe=True</em>, <em>python_cmd=&quot;python&quot;</em>, <em>num_mappers=None</em>, <em>num_reducers=None</em>, <em>**kw</em><span class="optional">]</span><big>)</big><a class="headerlink" href="#hadoopy.launch_frozen" title="Permalink to this definition">¶</a></dt>
+<dd><p>Freezes a script and then launches it.</p>
+<p>This function will freeze your python program, and place it on HDFS
+in &#8216;temp_path&#8217;.  It will not remove it afterwards as they are typically
+small, you can easily reuse/debug them, and to avoid any risks involved
+with removing the file.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>in_name</strong> &#8211; Input path (string or list)</li>
+<li><strong>out_name</strong> &#8211; Output path</li>
+<li><strong>script_path</strong> &#8211; Path to the script (e.g., script.py)</li>
+<li><strong>frozen_tar_path</strong> &#8211; If not None, use this path to a previously frozen archive.  You can get such a path from the return value of this function, it is particularly helpful in iterative programs.</li>
+<li><strong>temp_path</strong> &#8211; HDFS path that we can use to store temporary files (default to _hadoopy_temp)</li>
+<li><strong>partitioner</strong> &#8211; If True, the partitioner is the value.</li>
+<li><strong>wait</strong> &#8211; If True, wait till the process is completed (default True) this is useful if you want to run multiple jobs concurrently by using the &#8216;process&#8217; entry in the output.</li>
+<li><strong>files</strong> &#8211; Extra files (other than the script) (string or list).  NOTE: Hadoop copies the files into working directory</li>
+<li><strong>jobconfs</strong> &#8211; Extra jobconf parameters (string or list)</li>
+<li><strong>cmdenvs</strong> &#8211; Extra cmdenv parameters (string or list)</li>
+<li><strong>hstreaming</strong> &#8211; The full hadoop streaming path to call.</li>
+<li><strong>name</strong> &#8211; Set the job name to this (default None, job name is the script name)</li>
+<li><strong>use_typedbytes</strong> &#8211; If True (default), use typedbytes IO.</li>
+<li><strong>use_seqoutput</strong> &#8211; True (default), output sequence file. If False, output is text.</li>
+<li><strong>use_autoinput</strong> &#8211; If True (default), sets the input format to auto.</li>
+<li><strong>config</strong> &#8211; If a string, set the hadoop config path</li>
+<li><strong>pipe</strong> &#8211; If true (default) then call user code through a pipe to isolate it and stop bugs when printing to stdout.  See project docs.</li>
+<li><strong>python_cmd</strong> &#8211; The python command to use. The default is &#8220;python&#8221;. Can be used to override the system default python, e.g. python_cmd = &#8220;python2.6&#8221;</li>
+<li><strong>num_mappers</strong> &#8211; The number of mappers to use, i.e. the argument given to &#8216;numMapTasks&#8217;. If None, then do not specify this argument to hadoop streaming.</li>
+<li><strong>num_reducers</strong> &#8211; The number of reducers to use, i.e. the argument given to &#8216;numReduceTasks&#8217;. If None, then do not specify this argument to hadoop streaming.</li>
+</ul>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Return type:</th><td class="field-body"><p class="first">Dictionary with some of the following entries (depending on options)</p>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">freeze_cmds: Freeze command(s) ran</p>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">frozen_tar_path: HDFS path to frozen file</p>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">hadoop_cmds: Hadoopy command(s) ran</p>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">process: subprocess.Popen object</p>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">output: Iterator of (key, value) pairs</p>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Raises :</th><td class="field-body"><p class="first">subprocess.CalledProcessError: Hadoop error.</p>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Raises :</th><td class="field-body"><p class="first last">OSError: Hadoop streaming not found.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="hadoopy.launch_local">
+<tt class="descclassname">hadoopy.</tt><tt class="descname">launch_local</tt><big>(</big><em>in_name</em>, <em>out_name</em>, <em>script_path</em><span class="optional">[</span>, <em>max_input=-1</em>, <em>files=()</em>, <em>cmdenvs=()</em>, <em>pipe=True</em>, <em>python_cmd='python'</em>, <em>remove_tempdir=True</em>, <em>**kw</em><span class="optional">]</span><big>)</big><a class="headerlink" href="#hadoopy.launch_local" title="Permalink to this definition">¶</a></dt>
+<dd><p>A simple local emulation of hadoop</p>
+<p>This doesn&#8217;t run hadoop and it doesn&#8217;t support many advanced features, it
+is intended for simple debugging.  The input/output uses HDFS if an
+HDFS path is given. This allows for small tasks to be run locally
+(primarily while debugging). A temporary working directory is used and
+removed.</p>
+<p>Support</p>
+<ul class="simple">
+<li>Environmental variables</li>
+<li>Map-only tasks</li>
+<li>Combiner</li>
+<li>Files</li>
+<li>Pipe (see below)</li>
+<li>Display of stdout/stderr</li>
+<li>Iterator of KV pairs as input or output (bypassing HDFS)</li>
+</ul>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>in_name</strong> &#8211; Input path (string or list of strings) or Iterator of (key, value).  If it is an iterator then no input is taken from HDFS.</li>
+<li><strong>out_name</strong> &#8211; Output path or None.  If None then output is not placed on HDFS, it is available through the &#8216;output&#8217; key of the return value.</li>
+<li><strong>script_path</strong> &#8211; Path to the script (e.g., script.py)</li>
+<li><strong>max_input</strong> &#8211; Maximum number of Mapper inputs, if &lt; 0 (default) then unlimited.</li>
+<li><strong>files</strong> &#8211; Extra files (other than the script) (string or list).  NOTE: Hadoop copies the files into working directory</li>
+<li><strong>cmdenvs</strong> &#8211; Extra cmdenv parameters (string or list)</li>
+<li><strong>pipe</strong> &#8211; If true (default) then call user code through a pipe to isolate it and stop bugs when printing to stdout.  See project docs.</li>
+<li><strong>python_cmd</strong> &#8211; The python command to use. The default is &#8220;python&#8221;.  Can be used to override the system default python, e.g. python_cmd = &#8220;python2.6&#8221;</li>
+<li><strong>remove_tempdir</strong> &#8211; If True (default), then rmtree the temporary dir, else print its location.  Useful if you need to see temporary files or how input files are copied.</li>
+</ul>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Return type:</th><td class="field-body"><p class="first">Dictionary with some of the following entries (depending on options)</p>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">freeze_cmds: Freeze command(s) ran</p>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">frozen_tar_path: HDFS path to frozen file</p>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">hadoop_cmds: Hadoopy command(s) ran</p>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">process: subprocess.Popen object</p>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">output: Iterator of (key, value) pairs</p>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Raises :</th><td class="field-body"><p class="first">subprocess.CalledProcessError: Hadoop error.</p>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Raises :</th><td class="field-body"><p class="first last">OSError: Hadoop streaming not found.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="task-api-used-inside-hadoopy-jobs">
+<h2>Task API (used inside Hadoopy jobs)<a class="headerlink" href="#task-api-used-inside-hadoopy-jobs" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="hadoopy.run">
+<tt class="descclassname">hadoopy.</tt><tt class="descname">run</tt><big>(</big><em>mapper=None</em>, <em>reducer=None</em>, <em>combiner=None</em>, <em>**kw</em><big>)</big><a class="headerlink" href="#hadoopy.run" title="Permalink to this definition">¶</a></dt>
+<dd><p>Hadoopy entrance function</p>
+<p>This is to be called in all Hadoopy job&#8217;s.  Handles arguments passed in,
+calls the provided functions with input, and stores the output.</p>
+<p>TypedBytes are used if the following is True
+os.environ[&#8216;stream_map_input&#8217;] == &#8216;typedbytes&#8217;</p>
+<p>It is <em>highly</em> recommended that TypedBytes be used for all non-trivial
+tasks.  Keep in mind that the semantics of what you can safely emit from
+your functions is limited when using Text (i.e., no t or n).  You can use
+the base64 module to ensure that your output is clean.</p>
+<p>If the HADOOPY_CHDIR environmental variable is set, this will immediately
+change the working directory to the one specified.  This is useful if your
+data is provided in an archive but your program assumes it is in that
+directory.</p>
+<p>As hadoop streaming relies on stdin/stdout/stderr for communication,
+anything that outputs on them in an unexpected way (especially stdout) will
+break the pipe on the Java side and can potentially cause data errors.  To
+fix this problem, hadoopy allows file descriptors (integers) to be provided
+to each task.  These will be used instead of stdin/stdout by hadoopy.  This
+is designed to combine with the &#8216;pipe&#8217; command.</p>
+<p>To use the pipe functionality, instead of using
+<cite>your_script.py map</cite> use <cite>your_script.py pipe map</cite>
+which will call the script as a subprocess and use the read_fd/write_fd
+command line arguments for communication.  This isolates your script and
+eliminates the largest source of errors when using hadoop streaming.</p>
+<p>The pipe functionality has the following semantics
+stdin: Always an empty file
+stdout: Redirected to stderr (which is visible in the hadoop log)
+stderr: Kept as stderr
+read_fd: File descriptor that points to the true stdin
+write_fd: File descriptor that points to the true stdout</p>
+<div class="line-block">
+<div class="line"><strong>Command Interface</strong></div>
+<div class="line">The command line switches added to your script (e.g., script.py) are</div>
+</div>
+<dl class="docutils">
+<dt>python script.py <em>map</em> (read_fd) (write_fd)</dt>
+<dd>Use the provided mapper, optional read_fd/write_fd.</dd>
+<dt>python script.py <em>reduce</em> (read_fd) (write_fd)</dt>
+<dd>Use the provided reducer, optional read_fd/write_fd.</dd>
+<dt>python script.py <em>combine</em> (read_fd) (write_fd)</dt>
+<dd>Use the provided combiner, optional read_fd/write_fd.</dd>
+<dt>python script.py <em>freeze</em> &lt;tar_path&gt; &lt;-Z add_file0 -Z add_file1...&gt;</dt>
+<dd>Freeze the script to a tar file specified by &lt;tar_path&gt;.  The extension
+may be .tar or .tar.gz.  All files are placed in the root of the tar.
+Files specified with -Z will be added to the tar root.</dd>
+<dt>python script.py info</dt>
+<dd>Prints a json object containing &#8216;tasks&#8217; which is a list of tasks which
+can include &#8216;map&#8217;, &#8216;combine&#8217;, and &#8216;reduce&#8217;.  Also contains &#8216;doc&#8217; which is
+the provided documentation through the doc argument to the run function.
+The tasks correspond to provided inputs to the run function.</dd>
+</dl>
+<div class="line-block">
+<div class="line"><strong>Specification of mapper/reducer/combiner</strong> </div>
+<div class="line">Input Key/Value Types</div>
+<div class="line-block">
+<div class="line">For TypedBytes/SequenceFileInputFormat, the Key/Value are the decoded TypedBytes</div>
+<div class="line">For TextInputFormat, the Key is a byte offset (int) and the Value is a line without the newline (string)</div>
+<div class="line"><br /></div>
+</div>
+<div class="line">Output Key/Value Types</div>
+<div class="line-block">
+<div class="line">For TypedBytes, anything Pickle-able can be used</div>
+<div class="line">For Text, types are converted to string.  Note that neither may contain t or n as these are used in the encoding.  Output is keytvaluen</div>
+<div class="line"><br /></div>
+</div>
+<div class="line">Expected arguments</div>
+<div class="line-block">
+<div class="line">mapper(key, value) or mapper.map(key, value)</div>
+<div class="line">reducer(key, values) or reducer.reduce(key, values)</div>
+<div class="line">combiner(key, values) or combiner.reduce(key, values)</div>
+<div class="line"><br /></div>
+</div>
+<div class="line">Optional methods</div>
+<div class="line-block">
+<div class="line">func.configure(): Called before any input read.  Returns None.</div>
+<div class="line">func.close():  Called after all input read.  Returns None or Iterator of (key, value)</div>
+<div class="line"><br /></div>
+</div>
+<div class="line">Expected return</div>
+<div class="line-block">
+<div class="line">None or Iterator of (key, value)</div>
+</div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>mapper</strong> &#8211; Function or class following the above spec</li>
+<li><strong>reducer</strong> &#8211; Function or class following the above spec</li>
+<li><strong>combiner</strong> &#8211; Function or class following the above spec</li>
+<li><strong>doc</strong> &#8211; If specified, on error print this and call sys.exit(1)</li>
+</ul>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">True on error, else False (may not return if doc is set and
+there is an error)</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="hadoopy.status">
+<tt class="descclassname">hadoopy.</tt><tt class="descname">status</tt><big>(</big><em>msg</em><span class="optional">[</span>, <em>err=None</em><span class="optional">]</span><big>)</big><a class="headerlink" href="#hadoopy.status" title="Permalink to this definition">¶</a></dt>
+<dd><p>Output a status message that is displayed in the Hadoop web interface</p>
+<p>The status message will replace any other, if you want to append you must
+do this yourself.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>msg</strong> &#8211; String representing the status message</li>
+<li><strong>err</strong> &#8211; Func that outputs a string, if None then sys.stderr.write is used (default None)</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="hadoopy.counter">
+<tt class="descclassname">hadoopy.</tt><tt class="descname">counter</tt><big>(</big><em>group</em>, <em>counter</em><span class="optional">[</span>, <em>amount=1</em>, <em>err=None</em><span class="optional">]</span><big>)</big><a class="headerlink" href="#hadoopy.counter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Output a counter update that is displayed in the Hadoop web interface</p>
+<p>Counters are useful for quickly identifying the number of times an error
+occurred, current progress, or coarse statistics.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>group</strong> &#8211; Counter group</li>
+<li><strong>counter</strong> &#8211; Counter name</li>
+<li><strong>amount</strong> &#8211; Value to add (default 1)</li>
+<li><strong>err</strong> &#8211; Func that outputs a string, if None then sys.stderr.write is used (default None)</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="hdfs-api-usable-locally-and-in-hadoopy-jobs">
+<h2>HDFS API (Usable locally and in Hadoopy jobs)<a class="headerlink" href="#hdfs-api-usable-locally-and-in-hadoopy-jobs" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="hadoopy.readtb">
+<tt class="descclassname">hadoopy.</tt><tt class="descname">readtb</tt><big>(</big><em>paths</em><span class="optional">[</span>, <em>ignore_logs=True</em>, <em>num_procs=10</em><span class="optional">]</span><big>)</big><a class="headerlink" href="#hadoopy.readtb" title="Permalink to this definition">¶</a></dt>
+<dd><p>Read typedbytes sequence files on HDFS (with optional compression).</p>
+<p>By default, ignores files who&#8217;s names start with an underscore &#8216;_&#8217; as they
+are log files.  This allows you to cat a directory that may be a variety of
+outputs from hadoop (e.g., _SUCCESS, _logs).  This works on directories and
+files.  The KV pairs may be interleaved between files
+(they are read in parallel).</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>paths</strong> &#8211; HDFS path (str) or paths (iterator)</li>
+<li><strong>num_procs</strong> &#8211; Number of reading procs to open (default 10)</li>
+<li><strong>java_mem_mb</strong> &#8211; Integer of java heap size in MB (default 256)</li>
+<li><strong>ignore_logs</strong> &#8211; If True, ignore all files who&#8217;s name starts with an underscore.  Defaults to True.</li>
+</ul>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">An iterator of key, value pairs.</p>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Raises :</th><td class="field-body"><p class="first last">IOError: An error occurred reading the directory (e.g., not available).</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="hadoopy.writetb">
+<tt class="descclassname">hadoopy.</tt><tt class="descname">writetb</tt><big>(</big><em>path</em>, <em>kvs</em><big>)</big><a class="headerlink" href="#hadoopy.writetb" title="Permalink to this definition">¶</a></dt>
+<dd><p>Write typedbytes sequence file to HDFS given an iterator of KeyValue pairs</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>path</strong> &#8211; HDFS path (string)</li>
+<li><strong>kvs</strong> &#8211; Iterator of (key, value)</li>
+<li><strong>java_mem_mb</strong> &#8211; Integer of java heap size in MB (default 256)</li>
+</ul>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Raises :</th><td class="field-body"><p class="first last">IOError: An error occurred while saving the data.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="hadoopy.abspath">
+<tt class="descclassname">hadoopy.</tt><tt class="descname">abspath</tt><big>(</big><em>path</em><big>)</big><a class="headerlink" href="#hadoopy.abspath" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the absolute path to a file and canonicalize it</p>
+<p>Path is returned without a trailing slash and without redundant slashes.
+Caches the user&#8217;s home directory.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><strong>path</strong> &#8211; A string for the path.  This should not have any wildcards.</td>
+</tr>
+</tbody>
+</table>
+<p>:returns Absolute path to the file
+:raises IOError: If unsuccessful</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="hadoopy.ls">
+<tt class="descclassname">hadoopy.</tt><tt class="descname">ls</tt><big>(</big><em>path</em><big>)</big><a class="headerlink" href="#hadoopy.ls" title="Permalink to this definition">¶</a></dt>
+<dd><p>List files on HDFS.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><strong>path</strong> &#8211; A string (potentially with wildcards).</td>
+</tr>
+<tr class="field"><th class="field-name">Return type:</th><td class="field-body">A list of strings representing HDFS paths.</td>
+</tr>
+<tr class="field"><th class="field-name">Raises :</th><td class="field-body">IOError: An error occurred listing the directory (e.g., not available).</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="hadoopy.get">
+<tt class="descclassname">hadoopy.</tt><tt class="descname">get</tt><big>(</big><em>hdfs_path</em>, <em>local_path</em><big>)</big><a class="headerlink" href="#hadoopy.get" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get a file from hdfs</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>hdfs_path</strong> &#8211; Destination (str)</li>
+<li><strong>local_path</strong> &#8211; Source (str)</li>
+</ul>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Raises :</th><td class="field-body"><p class="first last">IOError: If unsuccessful</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="hadoopy.put">
+<tt class="descclassname">hadoopy.</tt><tt class="descname">put</tt><big>(</big><em>local_path</em>, <em>hdfs_path</em><big>)</big><a class="headerlink" href="#hadoopy.put" title="Permalink to this definition">¶</a></dt>
+<dd><p>Put a file on hdfs</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>local_path</strong> &#8211; Source (str)</li>
+<li><strong>hdfs_path</strong> &#8211; Destination (str)</li>
+</ul>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Raises :</th><td class="field-body"><p class="first last">IOError: If unsuccessful</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="hadoopy.rmr">
+<tt class="descclassname">hadoopy.</tt><tt class="descname">rmr</tt><big>(</big><em>path</em><big>)</big><a class="headerlink" href="#hadoopy.rmr" title="Permalink to this definition">¶</a></dt>
+<dd><p>Remove a file if it exists (recursive)</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><strong>path</strong> &#8211; A string (potentially with wildcards).</td>
+</tr>
+<tr class="field"><th class="field-name">Raises IOError:</th><td class="field-body">If unsuccessful</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="hadoopy.isempty">
+<tt class="descclassname">hadoopy.</tt><tt class="descname">isempty</tt><big>(</big><em>path</em><big>)</big><a class="headerlink" href="#hadoopy.isempty" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check if a path has zero length (also true if it&#8217;s a directory)</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><strong>path</strong> &#8211; A string for the path.  This should not have any wildcards.</td>
+</tr>
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body">True if the path has zero length, False otherwise.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="hadoopy.isdir">
+<tt class="descclassname">hadoopy.</tt><tt class="descname">isdir</tt><big>(</big><em>path</em><big>)</big><a class="headerlink" href="#hadoopy.isdir" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check if a path is a directory</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><strong>path</strong> &#8211; A string for the path.  This should not have any wildcards.</td>
+</tr>
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body">True if the path is a directory, False otherwise.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="hadoopy.exists">
+<tt class="descclassname">hadoopy.</tt><tt class="descname">exists</tt><big>(</big><em>path</em><big>)</big><a class="headerlink" href="#hadoopy.exists" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check if a file exists.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><strong>path</strong> &#8211; A string for the path.  This should not have any wildcards.</td>
+</tr>
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body">True if the path exists, False otherwise.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="testing-api">
+<h2>Testing API<a class="headerlink" href="#testing-api" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="hadoopy.Test">
+<em class="property">class </em><tt class="descclassname">hadoopy.</tt><tt class="descname">Test</tt><big>(</big><em>*args</em>, <em>**kw</em><big>)</big><a class="headerlink" href="#hadoopy.Test" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="classmethod">
+<dt id="hadoopy.Test.call_map">
+<em class="property">classmethod </em><tt class="descname">call_map</tt><big>(</big><em>func</em>, <em>test_input</em><big>)</big><a class="headerlink" href="#hadoopy.Test.call_map" title="Permalink to this definition">¶</a></dt>
+<dd><p>Given KeyValue pairs, sort, then group</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>func</strong> &#8211; Mapper function or class</li>
+<li><strong>test_input</strong> &#8211; Iterator of KeyValue pairs</li>
+</ul>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">List of KeyValue pairs from the mapper</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="hadoopy.Test.call_reduce">
+<em class="property">classmethod </em><tt class="descname">call_reduce</tt><big>(</big><em>func</em>, <em>test_input</em><big>)</big><a class="headerlink" href="#hadoopy.Test.call_reduce" title="Permalink to this definition">¶</a></dt>
+<dd><p>Given KeyValue pairs, sort, then group</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>func</strong> &#8211; Reducer function or class</li>
+<li><strong>test_input</strong> &#8211; Iterator of Grouped KeyValue pairs (e.g., from groupby_kv or shuffle_kv)</li>
+</ul>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">List of KeyValue pairs from the reducer</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="hadoopy.Test.groupby_kv">
+<em class="property">classmethod </em><tt class="descname">groupby_kv</tt><big>(</big><em>kv</em><big>)</big><a class="headerlink" href="#hadoopy.Test.groupby_kv" title="Permalink to this definition">¶</a></dt>
+<dd><p>Group sorted KeyValue pairs</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><strong>kv</strong> &#8211; Iterator of KeyValue pairs</td>
+</tr>
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body">Grouped KeyValue pairs in sorted order</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="hadoopy.Test.shuffle_kv">
+<em class="property">classmethod </em><tt class="descname">shuffle_kv</tt><big>(</big><em>kv</em><big>)</big><a class="headerlink" href="#hadoopy.Test.shuffle_kv" title="Permalink to this definition">¶</a></dt>
+<dd><p>Given KeyValue pairs, sort, then group</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><strong>kv</strong> &#8211; Iterator of KeyValue pairs</td>
+</tr>
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body">Grouped KeyValue pairs in sorted order</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="hadoopy.Test.sort_kv">
+<em class="property">classmethod </em><tt class="descname">sort_kv</tt><big>(</big><em>kv</em><big>)</big><a class="headerlink" href="#hadoopy.Test.sort_kv" title="Permalink to this definition">¶</a></dt>
+<dd><p>Perform a stable sort on KeyValue pair keys</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><strong>kv</strong> &#8211; Iterator of KeyValue pairs</td>
+</tr>
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body">Grouped KeyValue pairs in sorted order</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="internal-classes">
+<h2>Internal Classes<a class="headerlink" href="#internal-classes" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="hadoopy.GroupedValues">
+<em class="property">class </em><tt class="descclassname">hadoopy.</tt><tt class="descname">GroupedValues</tt><a class="headerlink" href="#hadoopy.GroupedValues" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="attribute">
+<dt id="hadoopy.GroupedValues.next">
+<tt class="descname">next</tt><a class="headerlink" href="#hadoopy.GroupedValues.next" title="Permalink to this definition">¶</a></dt>
+<dd><p>x.next() -&gt; the next value, or raise StopIteration</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="hadoopy.TypedBytesFile">
+<em class="property">class </em><tt class="descclassname">hadoopy.</tt><tt class="descname">TypedBytesFile</tt><big>(</big><em>fn=None</em>, <em>mode=None</em>, <em>read_fd=None</em>, <em>write_fd=None</em>, <em>flush_writes=False</em><big>)</big><a class="headerlink" href="#hadoopy.TypedBytesFile" title="Permalink to this definition">¶</a></dt>
+<dd><p>TypedBytes interface</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>fn</strong> &#8211; File path (default None)</li>
+<li><strong>mode</strong> &#8211; Mode to open the file with (default None)</li>
+<li><strong>read_fd</strong> &#8211; Read file descriptor (int) (default None)</li>
+<li><strong>write_fd</strong> &#8211; Write file descriptor (int) (default None)</li>
+<li><strong>flush_writes</strong> &#8211; If True then flush the buffer for every write (default False)</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="attribute">
+<dt id="hadoopy.TypedBytesFile.next">
+<tt class="descname">next</tt><a class="headerlink" href="#hadoopy.TypedBytesFile.next" title="Permalink to this definition">¶</a></dt>
+<dd><p>x.next() -&gt; the next value, or raise StopIteration</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="#">
+              <img class="logo" src="_static/hadoopy.png" alt="Logo"/>
+            </a></p>
+  <h3><a href="#">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Hadoopy: Python wrapper for Hadoop using Cython</a><ul>
+<li><a class="reference internal" href="#about">About</a></li>
+<li><a class="reference internal" href="#benchmark">Benchmark</a></li>
+<li><a class="reference internal" href="#example-hello-wordcount">Example - Hello Wordcount!</a></li>
+<li><a class="reference internal" href="#pipe-hopping-using-stdout-stderr-in-hadoopy-jobs">Pipe Hopping: Using Stdout/Stderr in Hadoopy Jobs</a></li>
+<li><a class="reference internal" href="#hadoopy-flow-automatic-job-level-parallization">Hadoopy Flow: Automatic Job-Level Parallization</a></li>
+<li><a class="reference internal" href="#job-driver-api-start-hadoop-jobs">Job Driver API (Start Hadoop Jobs)</a></li>
+<li><a class="reference internal" href="#task-api-used-inside-hadoopy-jobs">Task API (used inside Hadoopy jobs)</a></li>
+<li><a class="reference internal" href="#hdfs-api-usable-locally-and-in-hadoopy-jobs">HDFS API (Usable locally and in Hadoopy jobs)</a></li>
+<li><a class="reference internal" href="#testing-api">Testing API</a></li>
+<li><a class="reference internal" href="#internal-classes">Internal Classes</a></li>
+</ul>
+</li>
+</ul>
+
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/index.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" size="18" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li><a href="#">Hadoopy v.0.4.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2011, Brandyn White.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.7.
+    </div>
+  </body>
+</html>
